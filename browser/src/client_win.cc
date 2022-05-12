@@ -68,26 +68,9 @@ int ClientWin::Send(const ContentAnalysisRequest& request,
     return -1;
   }
 
-  Handshake handshake;
-  handshake.set_content_analysis_requested(true);
-  
-  bool success = false;
-
-  if (WriteMessageToPipe(handle, handshake.SerializeAsString())) {
-    if (WriteMessageToPipe(handle, request.SerializeAsString())) {
-      Acknowledgement acknowledgement;
-      std::vector<char> buffer = ReadNextMessageFromPipe(handle);
-      if (response->ParseFromArray(buffer.data(), buffer.size())) {
-        acknowledgement.set_verdict_received(response->results_size() > 0);
-        success = true;
-      }
-      if (!WriteMessageToPipe(handle, acknowledgement.SerializeAsString())) {
-        success = false;
-      }
-    }
-  }
-
+  bool success = WriteMessageToPipe(handle, request.SerializeAsString());
   CloseHandle(handle);
+
   return success ? 0 : -1;
 }
 
@@ -114,6 +97,10 @@ std::vector<char> ReadNextMessageFromPipe(HANDLE pipe) {
   }
   buffer.resize(final_size);
   return buffer;
+}
+
+int ClientWin::Acknowledge(const ContentAnalysisAcknowledgement& ack) {
+  return -1;
 }
 
 // Writes a string to the pipe. Returns True if successful, else returns False.

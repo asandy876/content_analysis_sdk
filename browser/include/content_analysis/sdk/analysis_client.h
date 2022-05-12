@@ -31,7 +31,7 @@ namespace sdk {
 class Client {
  public:
    // Configuration options where creating an agent.  `name` is used to create
-   // a channel between the agent and Google Chrome.  
+   // a channel between the agent and Google Chrome.
    struct Config {
      // Used to create a channel between the agent and Google Chrome.  Both must
      // use the same name to properly rendezvous with each other.  The channel
@@ -51,9 +51,12 @@ class Client {
   // Returns the configuration parameters of the client.
   virtual const Config& GetConfig() const = 0;
 
-  // Sets an analysis request to the agent and waits for a response.
+  // Sends an analysis request to the agent and waits for a response.
   virtual int Send(const ContentAnalysisRequest& request,
                    ContentAnalysisResponse* response) = 0;
+
+  // Sends an response acknowledgment back to the server.
+  virtual int Acknowledge(const ContentAnalysisAcknowledgement& ack) = 0;
 
  protected:
   Client() = default;

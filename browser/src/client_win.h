@@ -20,6 +20,7 @@ class ClientWin : public ClientBase {
   // Client:
   int Send(const ContentAnalysisRequest& request,
                  ContentAnalysisResponse* response) override;
+  int Acknowledge(const ContentAnalysisAcknowledgement& ack) override;
 
  private:
   DWORD ConnectToPipe(HANDLE* handle);

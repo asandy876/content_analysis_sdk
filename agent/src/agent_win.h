@@ -8,6 +8,7 @@
 #include <windows.h>
 
 #include <string>
+#include <vector>
 
 #include "agent_base.h"
 
@@ -17,11 +18,11 @@ namespace sdk {
 // Agent implementaton for Windows.
 class AgentWin : public AgentBase {
  public:
-  AgentWin(Config config);
+  AgentWin(Config config, std::unique_ptr<AgentEventHandler> handler);
   ~AgentWin() override;
 
   // Agent:
-  std::unique_ptr<Session> GetNextSession() override;
+  void HandleEvents() override;
   int Stop() override;
 
  private:
@@ -29,18 +30,25 @@ class AgentWin : public AgentBase {
   // successful ERROR_SUCCESS is returned and `handle` is set to the pipe's
   // server endpoint handle.  Otherwise an error code is returned and `handle`
   // is set to INVALID_HANDLE_VALUE.
-  DWORD CreatePipe(HANDLE* handle);
+  static DWORD CreatePipe(const std::string& name, HANDLE* handle);
 
   // Blocks and waits until a client connects.
-  DWORD ConnectPipe(HANDLE handle);
+  static DWORD ConnectPipe(HANDLE handle);
 
   void Shutdown();
 
+  // Name used to create the pipes between the agent and Google Chrome browsers.
   std::string pipename_;
+
+  // The handle to the pipe on which the agent is currently waiting for a
+  // Google Chrome browser to connect to.
   HANDLE hPipe_ = INVALID_HANDLE_VALUE;
+
+  // A list of handles to already connected Google Chrome browsers.
+  std::vector<HANDLE> browsers_;
 };
 
 }  // namespace sdk
 }  // namespace content_analysis
 
-#endif  //q CONTENT_ANALYSIS_AGENT_SRC_AGENT_WIN_H_
+#endif  // CONTENT_ANALYSIS_AGENT_SRC_AGENT_WIN_H_

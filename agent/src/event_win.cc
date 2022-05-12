@@ -2,20 +2,21 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "session_win.h"
+#include "event_win.h"
 
 namespace content_analysis {
 namespace sdk {
 
 const DWORD kBufferSize = 4096;
 
-SessionWin::SessionWin(HANDLE handle) : hPipe_(handle) {}
+ContentAnalysisEventWin::ContentAnalysisEventWin(HANDLE handle)
+    : hPipe_(handle) {}
 
-SessionWin::~SessionWin() {
+ContentAnalysisEventWin::~ContentAnalysisEventWin() {
   Shutdown();
 }
 
-DWORD SessionWin::Init() {
+DWORD ContentAnalysisEventWin::Init() {
   Handshake handshake;
   std::vector<char> hs_buffer = ReadNextMessageFromPipe(hPipe_);
   if (!handshake.ParseFromArray(hs_buffer.data(), hs_buffer.size())) {
@@ -36,12 +37,12 @@ DWORD SessionWin::Init() {
       ContentAnalysisResponse::Result::SUCCESS);
 }
 
-int SessionWin::Close() {
+int ContentAnalysisEventWin::Close() {
   Shutdown();
-  return SessionBase::Close();
+  return ContentAnalysisEventBase::Close();
 }
 
-int SessionWin::Send() {
+int ContentAnalysisEventWin::Send() {
   if (!WriteMessageToPipe(hPipe_, response()->SerializeAsString()))
     return -1;
 
@@ -53,7 +54,7 @@ int SessionWin::Send() {
   return 0;
 }
 
-void SessionWin::Shutdown() {
+void ContentAnalysisEventWin::Shutdown() {
   if (hPipe_ != INVALID_HANDLE_VALUE) {
     FlushFileBuffers(hPipe_);
     CloseHandle(hPipe_);
