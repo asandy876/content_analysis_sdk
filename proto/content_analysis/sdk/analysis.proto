@@ -19,9 +19,12 @@ message ContentAnalysisAcknowledgement {
     // The response was handled as specified by the agent.
     SUCCESS = 1;
 
+    // The response from the agent was not properly formatted.
+    INVALID_RESPONSE = 2;
+
     // The response from the agent was too late and Google Chrome took the
     // default action.
-    TOO_LATE = 2;
+    TOO_LATE = 3;
   };
   optional Status status = 2;
 }

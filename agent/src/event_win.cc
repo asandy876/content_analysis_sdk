@@ -2,39 +2,30 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <utility>
+
 #include "event_win.h"
 
 namespace content_analysis {
 namespace sdk {
 
-const DWORD kBufferSize = 4096;
-
-ContentAnalysisEventWin::ContentAnalysisEventWin(HANDLE handle)
-    : hPipe_(handle) {}
+ContentAnalysisEventWin::ContentAnalysisEventWin(HANDLE handle,
+                                                 ContentAnalysisRequest req)
+    : hPipe_(handle) {
+  // TODO(rogerta): do some basic validation of the request.
+  *request() = std::move(req);
+}
 
 ContentAnalysisEventWin::~ContentAnalysisEventWin() {
   Shutdown();
 }
 
 DWORD ContentAnalysisEventWin::Init() {
-  Handshake handshake;
-  std::vector<char> hs_buffer = ReadNextMessageFromPipe(hPipe_);
-  if (!handshake.ParseFromArray(hs_buffer.data(), hs_buffer.size())) {
-    return -1;
-  }
-  if (!handshake.content_analysis_requested()) {
-    return ERROR_SUCCESS;
-  }
-  std::vector<char> buffer = ReadNextMessageFromPipe(hPipe_);
-  if (!request()->ParseFromArray(buffer.data(), buffer.size())) {
-    return -1;
-  }
-  // TODO(rogerta): do some basic validation of the request.
-
   // Prepare the response so that ALLOW verdicts are the default().
-  return UpdateResponse(*response(),
+  UpdateResponse(*response(),
       request()->tags_size() > 0 ? request()->tags(0) : std::string(),
       ContentAnalysisResponse::Result::SUCCESS);
+  return ERROR_SUCCESS;
 }
 
 int ContentAnalysisEventWin::Close() {
@@ -46,45 +37,15 @@ int ContentAnalysisEventWin::Send() {
   if (!WriteMessageToPipe(hPipe_, response()->SerializeAsString()))
     return -1;
 
-  std::vector<char> buffer = ReadNextMessageFromPipe(hPipe_);
-  if (!acknowledgement()->ParseFromArray(buffer.data(), buffer.size())) {
-    return -1;
-  }
-
   return 0;
 }
 
 void ContentAnalysisEventWin::Shutdown() {
   if (hPipe_ != INVALID_HANDLE_VALUE) {
+    // This event does not own the pipe, so don't close it.
     FlushFileBuffers(hPipe_);
-    CloseHandle(hPipe_);
     hPipe_ = INVALID_HANDLE_VALUE;
   }
-}
-
-// Reads the next message from the pipe and returns a buffer of chars.
-// Can read any length of message.
-std::vector<char> ReadNextMessageFromPipe(HANDLE pipe) {
-  DWORD err = ERROR_SUCCESS;
-  std::vector<char> buffer(kBufferSize);
-  char* p = buffer.data();
-  int final_size = 0;
-  while (true) {
-    DWORD read;
-    if (ReadFile(pipe, p, kBufferSize, &read, nullptr)) {
-      final_size += read;
-      break;
-    } else {
-      err = GetLastError();
-      if (err != ERROR_MORE_DATA)
-        break;
-
-      buffer.resize(buffer.size() + kBufferSize);
-      p = buffer.data() + buffer.size() - kBufferSize;
-    }
-  }
-  buffer.resize(final_size);
-  return buffer;
 }
 
 // Writes a string to the pipe. Returns True if successful, else returns False.
@@ -92,6 +53,7 @@ bool WriteMessageToPipe(HANDLE pipe, const std::string& message) {
   if (message.empty())
     return false;
   DWORD written;
+  // TODO: use overlapped IO?
   return WriteFile(pipe, message.data(), message.size(), &written, nullptr);
 }
 

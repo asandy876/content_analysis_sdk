@@ -22,7 +22,7 @@ class AgentBase : public Agent {
  protected:
   AgentBase(Config config, std::unique_ptr<AgentEventHandler> handler);
 
-  const AgentEventHandler* handler() const { return handler_.get(); }
+  AgentEventHandler* handler() const { return handler_.get(); }
   const Config& configuration() const { return config_; }
 
  private:

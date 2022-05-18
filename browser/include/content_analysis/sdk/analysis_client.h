@@ -24,9 +24,6 @@ namespace sdk {
 // agent.  This class holds the client endpoint that the browser connects
 // with when content analysis is required.
 //
-// The `uri` argument to the constuctor represent a specific local content
-// analysis partner.  Each partner uses a specific and unique URI.
-//
 // See the demo directory for an example of how to use this class.
 class Client {
  public:
@@ -48,14 +45,14 @@ class Client {
 
   virtual ~Client() = default;
 
-  // Returns the configuration parameters of the client.
+  // Returns the configuration parameters used to create the client.
   virtual const Config& GetConfig() const = 0;
 
   // Sends an analysis request to the agent and waits for a response.
   virtual int Send(const ContentAnalysisRequest& request,
                    ContentAnalysisResponse* response) = 0;
 
-  // Sends an response acknowledgment back to the server.
+  // Sends an response acknowledgment back to the agent.
   virtual int Acknowledge(const ContentAnalysisAcknowledgement& ack) = 0;
 
  protected:

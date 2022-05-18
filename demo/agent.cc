@@ -10,7 +10,7 @@
 #include "demo/handler.h"
 
 int main(int argc, char* argv[]) {
-  // Each agent uses a unique URI to identify itself with Google Chrome.
+  // Each agent uses a unique name to identify itself with Google Chrome.
   auto agent = content_analysis::sdk::Agent::Create({"content_analysis_sdk"},
       std::make_unique<Handler>());
   if (!agent) {

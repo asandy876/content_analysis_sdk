@@ -2,7 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#if !defined(WIN32)
 #include <pthread.h>
+#endif
 
 #include <fstream>
 #include <iostream>
@@ -13,6 +15,8 @@
 #include "demo/handler.h"
 #include "demo/request_queue.h"
 
+// An AgentEventHandler that dumps requests information to stdout and blocks
+// any requests that have the keyword "block" in their data
 class QueuingHandler : public Handler {
  public:
   QueuingHandler() {
@@ -31,7 +35,7 @@ class QueuingHandler : public Handler {
   }
 
 #if defined(WIN32)
-  static unsgined __stdcall ProcessRequests(void* qh) {
+  static unsigned __stdcall ProcessRequests(void* qh) {
 #else
   static void* ProcessRequests(void* qh) {
 #endif
@@ -57,7 +61,7 @@ class QueuingHandler : public Handler {
     // thread but any number would work.
     unsigned tid;
     thread_ = reinterpret_cast<HANDLE>(_beginthreadex(
-        nullptr, 0, ProcessRequests, &request_queue, 0, &tid));
+        nullptr, 0, ProcessRequests, this, 0, &tid));
 #else
     // Start a background thread to process the queue.  This demo starts one
     // thread but any number would work.
@@ -71,6 +75,7 @@ class QueuingHandler : public Handler {
   void WaitForBackgroundThread() {
 #if defined(WIN32)
     WaitForSingleObject(thread_, INFINITE);
+    CloseHandle(thread_);
 #else
     void* res;
     pthread_join(tid_, &res);

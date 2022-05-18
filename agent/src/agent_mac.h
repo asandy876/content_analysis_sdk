@@ -10,7 +10,7 @@
 namespace content_analysis {
 namespace sdk {
 
-// Agent implementaton for macos.
+// Agent implementaton for macOS.
 class AgentMac : public AgentBase {
  public:
   AgentMac(Config config, std::unique_ptr<AgentEventHandler> handler);

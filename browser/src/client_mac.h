@@ -10,7 +10,7 @@
 namespace content_analysis {
 namespace sdk {
 
-// Client implementaton for Mac.
+// Client implementaton for macOS.
 class ClientMac : public ClientBase {
  public:
   ClientMac(Config config);

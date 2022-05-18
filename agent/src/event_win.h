@@ -15,7 +15,7 @@ namespace sdk {
 // ContentAnalysisEvent implementaton for Windows.
 class ContentAnalysisEventWin : public ContentAnalysisEventBase {
  public:
-  ContentAnalysisEventWin(HANDLE handle);
+  ContentAnalysisEventWin(HANDLE handle, ContentAnalysisRequest request);
   ~ContentAnalysisEventWin() override;
 
   // Initialize the event.  This involves reading the request from Google
@@ -32,7 +32,6 @@ class ContentAnalysisEventWin : public ContentAnalysisEventBase {
   HANDLE hPipe_ = INVALID_HANDLE_VALUE;
 };
 
-std::vector<char> ReadNextMessageFromPipe(HANDLE pipe);
 bool WriteMessageToPipe(HANDLE pipe, const std::string& message);
 
 }  // namespace sdk

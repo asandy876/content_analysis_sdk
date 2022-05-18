@@ -12,8 +12,8 @@
 #include "demo/lock.h"
 
 // This class maintains a list of outstanding content analysis requests to
-// process.  Each request is encapsulated in one ContentAnalysisEvent.  Requests are handled
-// in FIFO order.
+// process.  Each request is encapsulated in one ContentAnalysisEvent.
+// Requests are handled in FIFO order.
 class RequestQueue {
  public:
   using Event = content_analysis::sdk::ContentAnalysisEvent;

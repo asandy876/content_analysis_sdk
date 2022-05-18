@@ -9,6 +9,7 @@
 using content_analysis::sdk::Client;
 using content_analysis::sdk::ContentAnalysisRequest;
 using content_analysis::sdk::ContentAnalysisResponse;
+using content_analysis::sdk::ContentAnalysisAcknowledgement;
 
 // Paramters used to build the request.
 content_analysis::sdk::AnalysisConnector connector =
@@ -87,20 +88,9 @@ void PrintHelp() {
     << kArgHelp << " : prints this help message" << std::endl;
 }
 
-int main(int argc, char* argv[]) {
-  // Each client uses a unique URI to identify itself with Google Chrome.
-  auto client = Client::Create({"content_analysis_sdk"});
-  if (!client) {
-    std::cout << "[Demo] Error starting client" << std::endl;
-    return 1;
-  };
-
-  if (!ParseCommandLine(argc, argv)) {
-    PrintHelp();
-    return 1;
-  }
-
+ContentAnalysisRequest BuildRequest() {
   ContentAnalysisRequest request;
+
   request.set_analysis_connector(connector);
   request.set_request_token(request_token);
   *request.add_tags() = tag;
@@ -113,72 +103,113 @@ int main(int argc, char* argv[]) {
   }
 
   if (!text_content.empty()) {
+    std::cout << "[Demo] setting text content." << std::endl;
     request.set_text_content(text_content);
   } else if (!file_path.empty()) {
     request.set_file_path(file_path);
   } else {
     std::cout << "[Demo] Specify text content or a file path." << std::endl;
     PrintHelp();
-    return 1;
+    return ContentAnalysisRequest();
   }
 
+  return request;
+}
+
+void DumpResponse(const ContentAnalysisResponse& response) {
+  for (auto result : response.results()) {
+    auto tag = result.has_tag() ? result.tag() : "<no-tag>";
+
+    auto status = result.has_status()
+      ? result.status()
+      : ContentAnalysisResponse::Result::STATUS_UNKNOWN;
+    std::string status_str;
+    switch (status) {
+    case ContentAnalysisResponse::Result::STATUS_UNKNOWN:
+      status_str = "Unknown";
+      break;
+    case ContentAnalysisResponse::Result::SUCCESS:
+      status_str = "Success";
+      break;
+    case ContentAnalysisResponse::Result::FAILURE:
+      status_str = "Failure";
+      break;
+    }
+
+    auto action =
+      ContentAnalysisResponse::Result::TriggeredRule::ACTION_UNSPECIFIED;
+    for (auto rule : result.triggered_rules()) {
+      if (rule.has_action() && rule.action() > action)
+        action = rule.action();
+    }
+    std::string action_str;
+    switch (action) {
+    case ContentAnalysisResponse::Result::TriggeredRule::ACTION_UNSPECIFIED:
+      action_str = "allowed";
+      break;
+    case ContentAnalysisResponse::Result::TriggeredRule::REPORT_ONLY:
+      action_str = "reported only";
+      break;
+    case ContentAnalysisResponse::Result::TriggeredRule::WARN:
+      action_str = "warned";
+      break;
+    case ContentAnalysisResponse::Result::TriggeredRule::BLOCK:
+      action_str = "blocked";
+      break;
+    }
+
+    std::cout << "[Demo] Request is " << action_str
+      << " after " << tag
+      << " analysis, status=" << status_str << std::endl;
+  }
+}
+
+ContentAnalysisAcknowledgement BuildAcknowledgement(
+    const std::string& request_token) {
+  ContentAnalysisAcknowledgement ack;
+  ack.set_request_token(request_token);
+  ack.set_status(ContentAnalysisAcknowledgement::SUCCESS);
+  return ack;
+}
+
+int HandleRequest(Client* client, const ContentAnalysisRequest& request) {
   ContentAnalysisResponse response;
   int err = client->Send(request, &response);
   if (err != 0) {
     std::cout << "[Demo] Error sending request" << std::endl;
     return 1;
-  }
-
-  // Print whether the request should be blocked or not.
-  if (response.results_size() == 0) {
+  } else if (response.results_size() == 0) {
     std::cout << "[Demo] Response is missing a result" << std::endl;
+    return 1;
   } else {
-    for (auto result : response.results()) {
-      auto tag = result.has_tag() ? result.tag() : "<no-tag>";
+    DumpResponse(response);
 
-      auto status = result.has_status()
-          ? result.status()
-          : ContentAnalysisResponse::Result::STATUS_UNKNOWN;
-      std::string status_str;
-      switch (status) {
-      case ContentAnalysisResponse::Result::STATUS_UNKNOWN:
-        status_str = "Unknown";
-        break;
-      case ContentAnalysisResponse::Result::SUCCESS:
-        status_str = "Success";
-        break;
-      case ContentAnalysisResponse::Result::FAILURE:
-        status_str = "Failure";
-        break;
-      }
-
-      auto action =
-          ContentAnalysisResponse::Result::TriggeredRule::ACTION_UNSPECIFIED;
-      for (auto rule : result.triggered_rules()) {
-        if (rule.has_action() && rule.action() > action)
-          action = rule.action();
-      }
-      std::string action_str;
-      switch (action) {
-        case ContentAnalysisResponse::Result::TriggeredRule::ACTION_UNSPECIFIED:
-          action_str = "allowed";
-          break;
-        case ContentAnalysisResponse::Result::TriggeredRule::REPORT_ONLY:
-          action_str = "reported only";
-          break;
-        case ContentAnalysisResponse::Result::TriggeredRule::WARN:
-          action_str = "warned";
-          break;
-        case ContentAnalysisResponse::Result::TriggeredRule::BLOCK:
-          action_str = "blocked";
-          break;
-      }
-
-      std::cout << "[Demo] Request is " << action_str
-                << " after " << tag
-                << " analysis, status=" << status_str << std::endl;
+    int err = client->Acknowledge(
+        BuildAcknowledgement(request.request_token()));
+    if (err != 0) {
+      std::cout << "[Demo] Error sending request" << std::endl;
     }
+
+    return 1;
   }
+
+  return 0;
+}
+
+int main(int argc, char* argv[]) {
+  if (!ParseCommandLine(argc, argv)) {
+    PrintHelp();
+    return 1;
+  }
+
+  // Each client uses a unique name to identify itself with Google Chrome.
+  auto client = Client::Create({"content_analysis_sdk"});
+  if (!client) {
+    std::cout << "[Demo] Error starting client" << std::endl;
+    return 1;
+  };
+
+  HandleRequest(client.get(), BuildRequest());
 
   return 0;
 };

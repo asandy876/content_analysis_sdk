@@ -11,6 +11,8 @@
 
 #include "content_analysis/sdk/analysis_agent.h"
 
+// An AgentEventHandler that dumps requests information to stdout and blocks
+// any requests that have the keyword "block" in their data
 class Handler : public content_analysis::sdk::AgentEventHandler {
  public:
   using Event = content_analysis::sdk::ContentAnalysisEvent;
@@ -70,10 +72,16 @@ class Handler : public content_analysis::sdk::AgentEventHandler {
 
  private:
   void OnBrowserConnected(
-      const content_analysis::sdk::BrowserInfo& info) override {}
+      const content_analysis::sdk::BrowserInfo& info) override {
+    std::cout << std::endl << "==========" << std::endl;
+    std::cout << "Browser connected" << std::endl;
+  }
 
   void OnBrowserDisconnected(
-      const content_analysis::sdk::BrowserInfo& info) override {}
+      const content_analysis::sdk::BrowserInfo& info) override {
+    std::cout << std::endl << "Browser disconnected" << std::endl;
+    std::cout << "==========" << std::endl;
+  }
 
   void OnAnalysisRequested(std::unique_ptr<Event> event) override {
     // If the agent is capable of analyzing content in the background, the
@@ -87,7 +95,7 @@ class Handler : public content_analysis::sdk::AgentEventHandler {
   void OnResponseAcknowledged(
       const content_analysis::sdk::ContentAnalysisAcknowledgement&
           ack) override {
-      std::cout << "[Demo] Received ack from Google Chrome" << std::endl;
+    std::cout << "Ack: " << ack.request_token() << std::endl;
   }
 
   void DumpRequest(

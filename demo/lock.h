@@ -13,6 +13,8 @@
 
 class ScopedLock;
 
+// A lock used to serialize access to a shared request queue.
+// See RequestQueue class for details.
 class Lock {
  public:
   Lock() {
