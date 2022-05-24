@@ -32,8 +32,6 @@ class ContentAnalysisEventWin : public ContentAnalysisEventBase {
   HANDLE hPipe_ = INVALID_HANDLE_VALUE;
 };
 
-bool WriteMessageToPipe(HANDLE pipe, const std::string& message);
-
 }  // namespace sdk
 }  // namespace content_analysis
 

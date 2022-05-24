@@ -9,6 +9,41 @@
 namespace content_analysis {
 namespace sdk {
 
+// Writes a string to the pipe. Returns True if successful, else returns False.
+static DWORD WriteMessageToPipe(HANDLE pipe, const std::string& message) {
+  if (message.empty()) {
+    return ERROR_SUCCESS;
+  }
+
+  OVERLAPPED overlapped;
+  memset(&overlapped, 0, sizeof(overlapped));
+  overlapped.hEvent = CreateEvent(nullptr, TRUE, FALSE, nullptr);
+  if (overlapped.hEvent == nullptr) {
+    return GetLastError();
+  }
+
+  DWORD err = ERROR_SUCCESS;
+  const char* cursor = message.data();
+  for (DWORD size = message.length(); size > 0;) {
+    if (WriteFile(pipe, cursor, size, nullptr, &overlapped)) {
+      break;
+    }
+
+    DWORD written;
+    if (!GetOverlappedResult(pipe, &overlapped, &written, TRUE)) {
+      err = GetLastError();
+      break;
+    }
+
+    cursor += written;
+    size -= written;
+  }
+
+  CloseHandle(overlapped.hEvent);
+  return err;
+}
+
+
 ContentAnalysisEventWin::ContentAnalysisEventWin(HANDLE handle,
                                                  ContentAnalysisRequest req)
     : hPipe_(handle) {
@@ -34,10 +69,8 @@ int ContentAnalysisEventWin::Close() {
 }
 
 int ContentAnalysisEventWin::Send() {
-  if (!WriteMessageToPipe(hPipe_, response()->SerializeAsString()))
-    return -1;
-
-  return 0;
+  DWORD err = WriteMessageToPipe(hPipe_, response()->SerializeAsString());
+  return err == ERROR_SUCCESS ? 0 : -1;
 }
 
 void ContentAnalysisEventWin::Shutdown() {
@@ -47,16 +80,6 @@ void ContentAnalysisEventWin::Shutdown() {
     hPipe_ = INVALID_HANDLE_VALUE;
   }
 }
-
-// Writes a string to the pipe. Returns True if successful, else returns False.
-bool WriteMessageToPipe(HANDLE pipe, const std::string& message) {
-  if (message.empty())
-    return false;
-  DWORD written;
-  // TODO: use overlapped IO?
-  return WriteFile(pipe, message.data(), message.size(), &written, nullptr);
-}
-
 
 }  // namespace sdk
 }  // namespace content_analysis

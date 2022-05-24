@@ -92,8 +92,10 @@ int AgentWin::Connection::HandleEvent(HANDLE handle) {
       is_connected_ = true;
       buffer_.resize(kBufferSize);
 
-      // TODO: Build browser_info_.
-      handler_->OnBrowserConnected(browser_info_);
+      err = BuildBrowserInfo();
+      if (err == ERROR_SUCCESS) {
+        handler_->OnBrowserConnected(browser_info_);
+      }
     } else {
       err = GetLastError();
     }
@@ -282,6 +284,31 @@ DWORD AgentWin::Connection::CallHandler() {
     }
   }
 
+  return err;
+}
+
+DWORD AgentWin::Connection::BuildBrowserInfo() {
+  if (!GetNamedPipeClientProcessId(handle_, &browser_info_.pid)) {
+    return GetLastError();
+  }
+
+  HANDLE hProc = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE,
+      browser_info_.pid);
+  if (hProc == nullptr) {
+    return GetLastError();
+  }
+  
+  DWORD err = ERROR_SUCCESS;
+  char path[MAX_PATH];
+  DWORD size = sizeof(path);
+  DWORD length = QueryFullProcessImageNameA(hProc, 0, path, &size);
+  if (length == 0) {
+    err = GetLastError();
+  }
+
+  CloseHandle(hProc);
+
+  browser_info_.binary_path = path;
   return err;
 }
 

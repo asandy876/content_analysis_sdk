@@ -84,6 +84,10 @@ class AgentWin : public AgentBase {
     // received from Google Chrome.
     DWORD CallHandler();
 
+    // Fills in the browser_info_ member of this Connection.  Assumes
+    // IsConnected() is true.
+    DWORD BuildBrowserInfo();
+
     // The handler to call for various agent events.
     AgentEventHandler* handler_ = nullptr;
 
