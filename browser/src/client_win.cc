@@ -41,7 +41,7 @@ int ClientWin::Send(const ContentAnalysisRequest& request,
   bool success = WriteMessageToPipe(hPipe_, agent_request.SerializeAsString());
   if (success) {
     std::vector<char> buffer = ReadNextMessageFromPipe(hPipe_);
-    response->ParseFromArray(buffer.data(), buffer.size());
+    success = response->ParseFromArray(buffer.data(), buffer.size());
   }
 
   return success ? 0 : -1;

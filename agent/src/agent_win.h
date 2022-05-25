@@ -7,6 +7,7 @@
 
 #include <windows.h>
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -31,11 +32,16 @@ class AgentWin : public AgentBase {
   class Connection {
    public:
     // Starts listening on a pipe with the given name. `is_first_pipe` should
-    // be true only for the first pipe created by the agent.
+    // be true only for the first pipe created by the agent.  `Connection`
+    // objects cannot be copied or moved because the OVERLAPPED structure
+    // cannot be changed or moved in memory while an I/O operation is in
+    // progress.
     Connection(std::string& pipename, AgentEventHandler* handler,
                bool is_first_pipe);
-    Connection(Connection&& other);
-    Connection& operator=(Connection&& other);
+    Connection(const Connection& other) = delete;
+    Connection(Connection&& other) = delete;
+    Connection& operator=(const Connection& other) = delete;
+    Connection& operator=(Connection&& other) = delete;
     ~Connection();
 
     bool IsValid() const { return handle_ != INVALID_HANDLE_VALUE; }
@@ -47,7 +53,7 @@ class AgentWin : public AgentBase {
 
     // Hnadles an event for this connection.  `wait_handle` corresponds to
     // this connections wait handle.
-    int HandleEvent(HANDLE wait_handle);
+    DWORD HandleEvent(HANDLE wait_handle);
 
    private:
     // Creates a new server endpoint of the pipe and returns the handle. If
@@ -71,9 +77,11 @@ class AgentWin : public AgentBase {
     void Cleanup();
 
     // Queues a read on the pipe to receive a message from Google Chrome.
-    // ERROR_SUCCESS and ERROR_IO_PENDING are both successful return values.
-    // Other values represent an error with the connection.
-    DWORD QueueReadFile();
+    // ERROR_SUCCESS, ERROR_IO_PENDING, and ERROR_MORE_DATA are successful
+    // return values. Other values represent an error with the connection.
+    // If `reset_cursor` is true the internal read buffer cursor is reset to
+    // the start of the buffer, otherwise it is unchanged.
+    DWORD QueueReadFile(bool reset_cursor);
 
     // Called when data from Google Chrome is available for reading from the
     // pipe. ERROR_SUCCESS and ERROR_MORE_DATA are both successful return
@@ -122,7 +130,7 @@ class AgentWin : public AgentBase {
   // A list of pipes to already connected Google Chrome browsers.
   // The first kNumPipeInstances pipes in the list correspond to listening
   // pipes.
-  std::vector<Connection> connections_;
+  std::vector<std::unique_ptr<Connection>> connections_;
 };
 
 }  // namespace sdk

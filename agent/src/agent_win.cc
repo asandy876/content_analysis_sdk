@@ -2,7 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <memory>
 #include <utility>
 #include <vector>
 
@@ -42,28 +41,6 @@ AgentWin::Connection::Connection(std::string& pipename,
   ResetInternal(pipename, is_first_pipe);
 }
 
-AgentWin::Connection::Connection(Connection&& other) {
-  *this = std::move(other);
-}
-
-AgentWin::Connection& AgentWin::Connection::operator=(Connection&& other) {
-  handler_ = other.handler_;
-  handle_ = other.handle_;
-  memcpy(&overlapped_, &other.overlapped_, sizeof(overlapped_));
-  is_connected_ = other.is_connected_;
-  browser_info_ = other.browser_info_;
-  buffer_ = std::move(other.buffer_);
-  cursor_ = other.cursor_;
-  read_size_ = other.read_size_;
-  final_size_ = other.final_size_;
-
-  other.handler_ = nullptr;
-  other.handle_ = INVALID_HANDLE_VALUE;
-  memset(&other.overlapped_, 0, sizeof(other.overlapped_));
-
-  return *this;
-}
-
 AgentWin::Connection::~Connection() {
   Cleanup();
 
@@ -74,7 +51,6 @@ AgentWin::Connection::~Connection() {
   // Invalid event handles are represented as null.
   if (overlapped_.hEvent) {
     CloseHandle(overlapped_.hEvent);
-    overlapped_.hEvent = nullptr;
   }
 }
 
@@ -82,8 +58,8 @@ DWORD AgentWin::Connection::Reset(std::string& pipename) {
   return ResetInternal(pipename, false);
 }
 
-int AgentWin::Connection::HandleEvent(HANDLE handle) {
-  int err = ERROR_SUCCESS;
+DWORD AgentWin::Connection::HandleEvent(HANDLE handle) {
+  DWORD err = ERROR_SUCCESS;
   DWORD count;
   BOOL success = GetOverlappedResult(handle, &overlapped_, &count, FALSE);
   if (!is_connected_) {
@@ -106,12 +82,16 @@ int AgentWin::Connection::HandleEvent(HANDLE handle) {
 
   // If all data has been read, queue another read.
   if (err == ERROR_SUCCESS || err == ERROR_MORE_DATA) {
-    err = QueueReadFile();
+    err = QueueReadFile(err == ERROR_SUCCESS);
   }
 
   if (err != ERROR_SUCCESS && err != ERROR_IO_PENDING &&
       err != ERROR_MORE_DATA) {
     Cleanup();
+  } else {
+    // Don't propagate all the "success" error codes to the called to keep
+    // this simpler.
+    err = ERROR_SUCCESS;
   }
 
   return err;
@@ -123,8 +103,6 @@ DWORD AgentWin::Connection::CreatePipe(
     HANDLE* handle) {
   DWORD err = ERROR_SUCCESS;
 
-  // TODO(rogerta): Probably need to remove PIPE_TYPE_MESSAGE since we don't
-  // want to limie messages to kBufferSize bytes max.
   DWORD mode = PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED;
   if (is_first_pipe) {
     mode |= FILE_FLAG_FIRST_PIPE_INSTANCE;
@@ -207,15 +185,22 @@ void AgentWin::Connection::Cleanup() {
   read_size_ = 0;
   final_size_ = 0;
 
+  // Cancel any outstanding IO requests on this pipe.
+  if (handle_ != INVALID_HANDLE_VALUE) {
+    CancelIoEx(handle_, nullptr);
+  }
+
   // This function does not close `handle_` or the event in overlapped so
   // that the server can resuse the pipe with an new Google Chrome browser
   // instance.
 }
 
-DWORD AgentWin::Connection::QueueReadFile() {
-  cursor_ = buffer_.data();
-  read_size_ = buffer_.size();
-  final_size_ = 0;
+DWORD AgentWin::Connection::QueueReadFile(bool reset_cursor) {
+  if (reset_cursor) {
+    cursor_ = buffer_.data();
+    read_size_ = buffer_.size();
+    final_size_ = 0;
+  }
 
   // When this function is called there are the following possiblities:
   //
@@ -329,8 +314,9 @@ AgentWin::AgentWin(
 
   connections_.reserve(kNumPipeInstances);
   for (int i = 0; i < kNumPipeInstances; ++i) {
-    connections_.emplace_back(pipename_, handler(), i == 0);
-    if (!connections_.back().IsValid()) {
+    connections_.emplace_back(
+        std::make_unique<Connection>(pipename_, handler(), i == 0));
+    if (!connections_.back()->IsValid()) {
       Shutdown();
       break;
     }
@@ -359,23 +345,24 @@ void AgentWin::HandleEvents() {
 
     index -= WAIT_OBJECT_0;
     auto& connection = connections_[index];
-    bool was_listening = !connection.IsConnected();
-    DWORD err = connection.HandleEvent(wait_handles[index]);
-    if (err != ERROR_SUCCESS && err != ERROR_IO_PENDING) {
+    bool was_listening = !connection->IsConnected();
+    DWORD err = connection->HandleEvent(wait_handles[index]);
+    if (err != ERROR_SUCCESS) {
       // If `connection` was not listening and there are more than
       // kNumPipeInstances pipes, delete this connection.  Otherwise
       // reset it so that it becomes a listener.
       if (!was_listening && connections_.size() > kNumPipeInstances) {
         connections_.erase(connections_.begin() + index);
       } else {
-        err = connection.Reset(pipename_);
+        err = connection->Reset(pipename_);
       }
     }
 
     // If `connection` was listening and is now connected, create a new
     // one so that there are always kNumPipeInstances listening.
-    if (err == ERROR_SUCCESS && was_listening && connection.IsConnected()) {
-      connections_.emplace_back(pipename_, handler(), false);
+    if (err == ERROR_SUCCESS && was_listening && connection->IsConnected()) {
+      connections_.emplace_back(
+          std::make_unique<Connection>(pipename_, handler(), false));
     }
   }
 }
@@ -389,7 +376,7 @@ void AgentWin::GetHandles(std::vector<HANDLE>& wait_handles) const {
   wait_handles.reserve(connections_.size());
   wait_handles.clear();
   for (auto& state : connections_) {
-    HANDLE wait_handle = state.GetWaitHandle();
+    HANDLE wait_handle = state->GetWaitHandle();
     if (!wait_handle) {
       wait_handles.clear();
       break;
