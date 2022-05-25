@@ -255,7 +255,7 @@ DWORD AgentWin::Connection::CallHandler() {
   if (request.ParseFromArray(buffer_.data(), final_size_)) {
     if (request.has_request()) {
       auto event = std::make_unique<ContentAnalysisEventWin>(
-          handle_, std::move(*request.mutable_request()));
+          handle_, browser_info_, std::move(*request.mutable_request()));
       if (event->Init() == ERROR_SUCCESS) {
         handler_->OnAnalysisRequested(std::move(event));
       } else {

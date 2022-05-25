@@ -15,7 +15,9 @@ namespace sdk {
 // ContentAnalysisEvent implementaton for Windows.
 class ContentAnalysisEventWin : public ContentAnalysisEventBase {
  public:
-  ContentAnalysisEventWin(HANDLE handle, ContentAnalysisRequest request);
+  ContentAnalysisEventWin(HANDLE handle,
+                          const BrowserInfo& browser_info,
+                          ContentAnalysisRequest request);
   ~ContentAnalysisEventWin() override;
 
   // Initialize the event.  This involves reading the request from Google
@@ -29,6 +31,7 @@ class ContentAnalysisEventWin : public ContentAnalysisEventBase {
  private:
   void Shutdown();
 
+  // This handle is not owned by the event.
   HANDLE hPipe_ = INVALID_HANDLE_VALUE;
 };
 

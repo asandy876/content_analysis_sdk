@@ -7,6 +7,10 @@
 namespace content_analysis {
 namespace sdk {
 
+ContentAnalysisEventBase::ContentAnalysisEventBase(
+   const BrowserInfo& browser_info)
+ : browser_info_(browser_info) {}
+
 int ContentAnalysisEventBase::Close() {
   return 0;
 }

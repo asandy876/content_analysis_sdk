@@ -15,16 +15,18 @@ class ContentAnalysisEventBase : public ContentAnalysisEvent {
  public:
    // ContentAnalysisEvent:
   int Close() override;
+  const BrowserInfo& GetBrowserInfo() override { return browser_info_; };
   const ContentAnalysisRequest& GetRequest() const override { return request_; }
   ContentAnalysisResponse& GetResponse() override { return response_; }
 
  protected:
-  ContentAnalysisEventBase() = default;
+  explicit ContentAnalysisEventBase(const BrowserInfo& browser_info);
 
   ContentAnalysisRequest* request() { return &request_; }
   ContentAnalysisResponse* response() { return &response_; }
 
 private:
+  BrowserInfo browser_info_;
   ContentAnalysisRequest request_;
   ContentAnalysisResponse response_;
 };

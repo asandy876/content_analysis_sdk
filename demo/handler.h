@@ -23,7 +23,7 @@ class Handler : public content_analysis::sdk::AgentEventHandler {
   // Analyzes one request from Google Chrome and responds back to the browser
   // with either an allow or block verdict.
   void AnalyzeContent(std::unique_ptr<Event> event) {
-    // A event represents one content analysis request and response triggered
+    // An event represents one content analysis request and response triggered
     // by a user action in Google Chrome.  The agent determines whether the
     // user is allowed to perform the action by examining event->GetRequest().
     // The verdict, which can be "allow" or "block" is written into
@@ -74,12 +74,12 @@ class Handler : public content_analysis::sdk::AgentEventHandler {
   void OnBrowserConnected(
       const content_analysis::sdk::BrowserInfo& info) override {
     std::cout << std::endl << "==========" << std::endl;
-    std::cout << "Browser connected" << std::endl;
+    std::cout << "Browser connected pid=" << info.pid << std::endl;
   }
 
   void OnBrowserDisconnected(
       const content_analysis::sdk::BrowserInfo& info) override {
-    std::cout << std::endl << "Browser disconnected" << std::endl;
+    std::cout << std::endl << "Browser disconnected pid=" << info.pid << std::endl;
     std::cout << "==========" << std::endl;
   }
 

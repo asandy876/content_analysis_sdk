@@ -45,8 +45,10 @@ static DWORD WriteMessageToPipe(HANDLE pipe, const std::string& message) {
 
 
 ContentAnalysisEventWin::ContentAnalysisEventWin(HANDLE handle,
+                                                 const BrowserInfo& browser_info,
                                                  ContentAnalysisRequest req)
-    : hPipe_(handle) {
+    : ContentAnalysisEventBase(browser_info),
+      hPipe_(handle) {
   // TODO(rogerta): do some basic validation of the request.
   *request() = std::move(req);
 }
