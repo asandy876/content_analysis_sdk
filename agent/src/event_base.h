@@ -17,18 +17,19 @@ class ContentAnalysisEventBase : public ContentAnalysisEvent {
   int Close() override;
   const BrowserInfo& GetBrowserInfo() override { return browser_info_; };
   const ContentAnalysisRequest& GetRequest() const override { return request_; }
-  ContentAnalysisResponse& GetResponse() override { return response_; }
+  ContentAnalysisResponse& GetResponse() override { return *response(); }
 
  protected:
   explicit ContentAnalysisEventBase(const BrowserInfo& browser_info);
 
   ContentAnalysisRequest* request() { return &request_; }
-  ContentAnalysisResponse* response() { return &response_; }
+  AgentToChrome* agent_to_chrome() { return &agent_to_chrome_; }
+  ContentAnalysisResponse* response() { return agent_to_chrome()->mutable_response(); }
 
 private:
   BrowserInfo browser_info_;
   ContentAnalysisRequest request_;
-  ContentAnalysisResponse response_;
+  AgentToChrome agent_to_chrome_;
 };
 
 }  // namespace sdk

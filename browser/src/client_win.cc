@@ -36,12 +36,17 @@ ClientWin::ClientWin(Config config) : ClientBase(std::move(config)) {
 int ClientWin::Send(const ContentAnalysisRequest& request,
                     ContentAnalysisResponse* response) {
   // TODO: avoid extra copy.
-  AgentRequest agent_request;
-  *agent_request.mutable_request() = request;
-  bool success = WriteMessageToPipe(hPipe_, agent_request.SerializeAsString());
+  ChromeToAgent chrome_to_agent;
+  *chrome_to_agent.mutable_request() = request;
+  bool success = WriteMessageToPipe(hPipe_,
+                                    chrome_to_agent.SerializeAsString());
   if (success) {
     std::vector<char> buffer = ReadNextMessageFromPipe(hPipe_);
-    success = response->ParseFromArray(buffer.data(), buffer.size());
+    AgentToChrome agent_to_chrome;
+    success = agent_to_chrome.ParseFromArray(buffer.data(), buffer.size());
+    if (success) {
+      *response = std::move(*agent_to_chrome.mutable_response());
+    }
   }
 
   return success ? 0 : -1;
@@ -49,9 +54,9 @@ int ClientWin::Send(const ContentAnalysisRequest& request,
 
 int ClientWin::Acknowledge(const ContentAnalysisAcknowledgement& ack) {
   // TODO: avoid extra copy.
-  AgentRequest agent_request;
-  *agent_request.mutable_ack() = ack;
-  return WriteMessageToPipe(hPipe_, agent_request.SerializeAsString())
+  ChromeToAgent chrome_to_agent;
+  *chrome_to_agent.mutable_ack() = ack;
+  return WriteMessageToPipe(hPipe_, chrome_to_agent.SerializeAsString())
       ? 0 : -1;
 }
 

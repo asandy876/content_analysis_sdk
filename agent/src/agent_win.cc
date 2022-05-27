@@ -251,7 +251,7 @@ DWORD AgentWin::Connection::OnReadFile(BOOL success, DWORD count) {
 DWORD AgentWin::Connection::CallHandler() {
   DWORD err = ERROR_SUCCESS;
 
-  AgentRequest request;
+  ChromeToAgent request;
   if (request.ParseFromArray(buffer_.data(), final_size_)) {
     if (request.has_request()) {
       auto event = std::make_unique<ContentAnalysisEventWin>(

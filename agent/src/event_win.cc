@@ -71,7 +71,8 @@ int ContentAnalysisEventWin::Close() {
 }
 
 int ContentAnalysisEventWin::Send() {
-  DWORD err = WriteMessageToPipe(hPipe_, response()->SerializeAsString());
+  DWORD err = WriteMessageToPipe(hPipe_,
+                                 agent_to_chrome()->SerializeAsString());
   return err == ERROR_SUCCESS ? 0 : -1;
 }
 
